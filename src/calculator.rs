@@ -1,7 +1,10 @@
 use crate::error::RpnError;
 use crate::parser::{Token, parse_expression};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Calculator {
     stack: Vec<f64>,
     history: Vec<String>,
@@ -13,6 +16,59 @@ impl Calculator {
             stack: Vec::new(),
             history: Vec::new(),
         }
+    }
+
+    pub fn new_with_history() -> Self {
+        match Self::load_history() {
+            Ok(mut calc) => {
+                calc.stack.clear(); // Always start with empty stack
+                calc
+            }
+            Err(_) => Self::new(),
+        }
+    }
+
+    fn get_history_file_path() -> Result<PathBuf, RpnError> {
+        let mut path = dirs::data_dir()
+            .ok_or_else(|| RpnError::IoError("Cannot determine data directory".to_string()))?;
+        path.push("rpn-calculator");
+        
+        // Create directory if it doesn't exist
+        if !path.exists() {
+            fs::create_dir_all(&path)
+                .map_err(|e| RpnError::IoError(format!("Cannot create data directory: {}", e)))?;
+        }
+        
+        path.push("history.json");
+        Ok(path)
+    }
+
+    fn load_history() -> Result<Calculator, RpnError> {
+        let path = Self::get_history_file_path()?;
+        
+        if !path.exists() {
+            return Ok(Calculator::new());
+        }
+
+        let content = fs::read_to_string(&path)
+            .map_err(|e| RpnError::IoError(format!("Cannot read history file: {}", e)))?;
+        
+        let calc: Calculator = serde_json::from_str(&content)
+            .map_err(|e| RpnError::ParseError(format!("Cannot parse history file: {}", e)))?;
+        
+        Ok(calc)
+    }
+
+    pub fn save_history(&self) -> Result<(), RpnError> {
+        let path = Self::get_history_file_path()?;
+        
+        let content = serde_json::to_string_pretty(self)
+            .map_err(|e| RpnError::ParseError(format!("Cannot serialize history: {}", e)))?;
+        
+        fs::write(&path, content)
+            .map_err(|e| RpnError::IoError(format!("Cannot write history file: {}", e)))?;
+        
+        Ok(())
     }
 
     pub fn evaluate(&mut self, expression: &str) -> Result<f64, RpnError> {
@@ -61,6 +117,9 @@ impl Calculator {
         // Add to history
         self.history.push(format!("{} = {}", expression, result));
         
+        // Auto-save history after each calculation
+        let _ = self.save_history(); // Ignore errors for non-critical operation
+        
         Ok(result)
     }
 
@@ -70,6 +129,7 @@ impl Calculator {
 
     pub fn clear_history(&mut self) {
         self.history.clear();
+        let _ = self.save_history(); // Save cleared state
     }
 
     pub fn get_stack(&self) -> &[f64] {
