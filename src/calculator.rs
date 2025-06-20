@@ -27,16 +27,25 @@ impl Calculator {
                     self.stack.push(num);
                 }
                 Token::Operator(op) => {
-                    if self.stack.len() < 2 {
-                        return Err(RpnError::InsufficientOperands(op.symbol().to_string()));
+                    if op.is_unary() {
+                        if self.stack.is_empty() {
+                            return Err(RpnError::InsufficientOperands(op.symbol().to_string()));
+                        }
+                        let operand = self.stack.pop().unwrap();
+                        let result = op.apply_unary(operand)?;
+                        self.stack.push(result);
+                    } else {
+                        if self.stack.len() < 2 {
+                            return Err(RpnError::InsufficientOperands(op.symbol().to_string()));
+                        }
+                        
+                        // Pop two operands (note: right operand is popped first)
+                        let right = self.stack.pop().unwrap();
+                        let left = self.stack.pop().unwrap();
+                        
+                        let result = op.apply(left, right)?;
+                        self.stack.push(result);
                     }
-                    
-                    // Pop two operands (note: right operand is popped first)
-                    let right = self.stack.pop().unwrap();
-                    let left = self.stack.pop().unwrap();
-                    
-                    let result = op.apply(left, right)?;
-                    self.stack.push(result);
                 }
             }
         }
@@ -107,6 +116,29 @@ mod tests {
         assert_eq!(calc.evaluate("10 5 -").unwrap(), 5.0);
         assert_eq!(calc.evaluate("6 7 *").unwrap(), 42.0);
         assert_eq!(calc.evaluate("15 3 /").unwrap(), 5.0);
+    }
+
+    #[test]
+    fn test_advanced_operations() {
+        let mut calc = Calculator::new();
+        
+        assert_eq!(calc.evaluate("2 3 ^").unwrap(), 8.0);
+        assert_eq!(calc.evaluate("25 sqrt").unwrap(), 5.0);
+        assert_eq!(calc.evaluate("-5 abs").unwrap(), 5.0);
+        assert_eq!(calc.evaluate("3.7 floor").unwrap(), 3.0);
+        assert_eq!(calc.evaluate("3.2 ceil").unwrap(), 4.0);
+        assert_eq!(calc.evaluate("17 5 %").unwrap(), 2.0);
+    }
+
+    #[test]
+    fn test_trigonometric_functions() {
+        let mut calc = Calculator::new();
+        
+        let result = calc.evaluate("0 sin").unwrap();
+        assert!((result - 0.0).abs() < 1e-10);
+        
+        let result = calc.evaluate("0 cos").unwrap();
+        assert!((result - 1.0).abs() < 1e-10);
     }
 
     #[test]
