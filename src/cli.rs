@@ -19,18 +19,25 @@ pub struct Args {
 }
 
 pub fn run_batch_mode(expression: &str) -> Result<(), RpnError> {
-    let mut calculator = Calculator::new();
+    let mut calculator = Calculator::new_with_history();
     let result = calculator.evaluate_and_format(expression);
     println!("{}", result);
     Ok(())
 }
 
 pub fn run_interactive_mode() -> Result<(), RpnError> {
-    let mut calculator = Calculator::new();
+    let mut calculator = Calculator::new_with_history();
     let mut rl = DefaultEditor::new().map_err(|e| RpnError::IoError(e.to_string()))?;
     
     println!("RPN Calculator - Interactive Mode");
     println!("Enter RPN expressions (e.g., '3 4 +' for 3 + 4)");
+    
+    // Show if history was loaded
+    let history_count = calculator.get_history().len();
+    if history_count > 0 {
+        println!("Loaded {} previous calculations from history", history_count);
+    }
+    
     println!("Commands:");
     println!("  help    - Show this help message");
     println!("  history - Show calculation history");
@@ -63,7 +70,7 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                     }
                     "clear" => {
                         calculator.clear_history();
-                        println!("History cleared.");
+                        println!("History cleared and saved.");
                     }
                     _ => {
                         let result = calculator.evaluate_and_format(line);
