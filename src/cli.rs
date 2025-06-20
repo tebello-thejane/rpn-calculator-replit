@@ -3,6 +3,7 @@ use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use crate::calculator::Calculator;
 use crate::error::RpnError;
+use colored::*;
 
 #[derive(Parser)]
 #[command(name = "rpn-calculator")]
@@ -21,7 +22,12 @@ pub struct Args {
 pub fn run_batch_mode(expression: &str) -> Result<(), RpnError> {
     let mut calculator = Calculator::new_with_history();
     let result = calculator.evaluate_and_format(expression);
-    println!("{}", result);
+    
+    if result.starts_with("Error:") {
+        println!("{}", result.red());
+    } else {
+        println!("{}", result.green().bold());
+    }
     Ok(())
 }
 
@@ -29,20 +35,20 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
     let mut calculator = Calculator::new_with_history();
     let mut rl = DefaultEditor::new().map_err(|e| RpnError::IoError(e.to_string()))?;
     
-    println!("RPN Calculator - Interactive Mode");
-    println!("Enter RPN expressions (e.g., '3 4 +' for 3 + 4)");
+    println!("{}", "🧮 RPN Calculator - Interactive Mode".cyan().bold());
+    println!("{}", "Enter RPN expressions (e.g., '3 4 +' for 3 + 4)".bright_white());
     
     // Show if history was loaded
     let history_count = calculator.get_history().len();
     if history_count > 0 {
-        println!("Loaded {} previous calculations from history", history_count);
+        println!("{}", format!("📚 Loaded {} previous calculations from history", history_count).yellow());
     }
     
-    println!("Commands:");
-    println!("  help    - Show this help message");
-    println!("  history - Show calculation history");
-    println!("  clear   - Clear calculation history");
-    println!("  quit    - Exit the calculator");
+    println!("\n{}", "Commands:".bright_blue().bold());
+    println!("  {}    - Show this help message", "help".green());
+    println!("  {}  - Show calculation history", "history".green());
+    println!("  {}   - Clear calculation history", "clear".green());
+    println!("  {}    - Exit the calculator", "quit".green());
     println!();
 
     loop {
@@ -59,7 +65,7 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                 
                 match line {
                     "quit" | "exit" | "q" => {
-                        println!("Goodbye!");
+                        println!("{}", "👋 Goodbye!".bright_magenta().bold());
                         break;
                     }
                     "help" | "h" => {
@@ -70,19 +76,23 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                     }
                     "clear" => {
                         calculator.clear_history();
-                        println!("History cleared and saved.");
+                        println!("{}", "🗑️  History cleared and saved.".yellow());
                     }
                     _ => {
                         let result = calculator.evaluate_and_format(line);
-                        println!("{}", result);
+                        if result.starts_with("Error:") {
+                            println!("{}", result.red());
+                        } else {
+                            println!("{}", format!("= {}", result).green().bold());
+                        }
                     }
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C pressed. Use 'quit' to exit.");
+                println!("{}", "⚠️  CTRL-C pressed. Use 'quit' to exit.".yellow());
             }
             Err(ReadlineError::Eof) => {
-                println!("CTRL-D pressed. Goodbye!");
+                println!("{}", "👋 CTRL-D pressed. Goodbye!".bright_magenta().bold());
                 break;
             }
             Err(err) => {
@@ -95,58 +105,68 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
 }
 
 fn show_help() {
-    println!("RPN Calculator Help");
-    println!("==================");
+    println!("{}", "📖 RPN Calculator Help".cyan().bold());
+    println!("{}", "======================".cyan());
     println!();
-    println!("RPN (Reverse Polish Notation) places operators after operands.");
+    println!("{}", "RPN (Reverse Polish Notation) places operators after operands.".bright_white());
     println!();
-    println!("Binary operators (require two operands):");
-    println!("  +    Addition");
-    println!("  -    Subtraction");
-    println!("  *    Multiplication");
-    println!("  /    Division");
-    println!("  ^ or pow  Power/Exponentiation");
-    println!("  % or mod  Modulo");
+    println!("{}", "Binary operators (require two operands):".blue().bold());
+    println!("  {}    Addition", "+".green());
+    println!("  {}    Subtraction", "-".green());
+    println!("  {}    Multiplication", "*".green());
+    println!("  {}    Division", "/".green());
+    println!("  {} or {}  Power/Exponentiation", "^".green(), "pow".green());
+    println!("  {} or {}  Modulo", "%".green(), "mod".green());
     println!();
-    println!("Unary operators (require one operand):");
-    println!("  sqrt   Square root");
-    println!("  sin    Sine (radians)");
-    println!("  cos    Cosine (radians)");
-    println!("  tan    Tangent (radians)");
-    println!("  log    Base-10 logarithm");
-    println!("  ln     Natural logarithm");
-    println!("  abs    Absolute value");
-    println!("  floor  Floor (round down)");
-    println!("  ceil   Ceiling (round up)");
-    println!("  round  Round to nearest integer");
+    println!("{}", "Unary operators (require one operand):".magenta().bold());
+    println!("  {}   Square root", "sqrt".yellow());
+    println!("  {}    Sine (radians)", "sin".yellow());
+    println!("  {}    Cosine (radians)", "cos".yellow());
+    println!("  {}    Tangent (radians)", "tan".yellow());
+    println!("  {}    Base-10 logarithm", "log".yellow());
+    println!("  {}     Natural logarithm", "ln".yellow());
+    println!("  {}    Absolute value", "abs".yellow());
+    println!("  {}  Floor (round down)", "floor".yellow());
+    println!("  {}   Ceiling (round up)", "ceil".yellow());
+    println!("  {}  Round to nearest integer", "round".yellow());
     println!();
-    println!("Examples:");
-    println!("  3 4 +       →  7     (equivalent to 3 + 4)");
-    println!("  2 3 ^       →  8     (equivalent to 2³)");
-    println!("  25 sqrt     →  5     (square root of 25)");
-    println!("  0 sin       →  0     (sine of 0 radians)");
-    println!("  -5 abs      →  5     (absolute value of -5)");
-    println!("  3.7 floor   →  3     (floor of 3.7)");
-    println!("  3 4 + 2 *   →  14    (equivalent to (3 + 4) * 2)");
-    println!("  2 3 4 + ^   →  128   (equivalent to 2^(3+4))");
+    println!("{}", "Examples:".bright_blue().bold());
+    println!("  {} {}       {}  {}     {}", "3 4".white(), "+".green(), "→".bright_blue(), "7".green().bold(), "(equivalent to 3 + 4)".dimmed());
+    println!("  {} {}       {}  {}     {}", "2 3".white(), "^".green(), "→".bright_blue(), "8".green().bold(), "(equivalent to 2³)".dimmed());
+    println!("  {} {}     {}  {}     {}", "25".white(), "sqrt".yellow(), "→".bright_blue(), "5".green().bold(), "(square root of 25)".dimmed());
+    println!("  {} {}       {}  {}     {}", "0".white(), "sin".yellow(), "→".bright_blue(), "0".green().bold(), "(sine of 0 radians)".dimmed());
+    println!("  {} {}      {}  {}     {}", "-5".white(), "abs".yellow(), "→".bright_blue(), "5".green().bold(), "(absolute value of -5)".dimmed());
+    println!("  {} {}   {}  {}     {}", "3.7".white(), "floor".yellow(), "→".bright_blue(), "3".green().bold(), "(floor of 3.7)".dimmed());
+    println!("  {} {} {}   {}  {}    {}", "3 4".white(), "+".green(), "2 *".green(), "→".bright_blue(), "14".green().bold(), "(equivalent to (3 + 4) * 2)".dimmed());
+    println!("  {} {} {}   {}  {}   {}", "2 3 4".white(), "+".green(), "^".green(), "→".bright_blue(), "128".green().bold(), "(equivalent to 2^(3+4))".dimmed());
     println!();
-    println!("Commands:");
-    println!("  help    - Show this help message");
-    println!("  history - Show calculation history");
-    println!("  clear   - Clear calculation history");
-    println!("  quit    - Exit the calculator");
+    println!("{}", "Commands:".bright_blue().bold());
+    println!("  {}    - Show this help message", "help".green());
+    println!("  {} - Show calculation history", "history".green());
+    println!("  {}   - Clear calculation history", "clear".green());
+    println!("  {}    - Exit the calculator", "quit".green());
     println!();
 }
 
 fn show_history(calculator: &Calculator) {
     let history = calculator.get_history();
     if history.is_empty() {
-        println!("No calculations in history.");
+        println!("{}", "📭 No calculations in history.".yellow());
     } else {
-        println!("Calculation History:");
-        println!("===================");
+        println!("{}", "📊 Calculation History:".cyan().bold());
+        println!("{}", "=====================".cyan());
         for (i, entry) in history.iter().enumerate() {
-            println!("{:3}: {}", i + 1, entry);
+            let parts: Vec<&str> = entry.split(" = ").collect();
+            if parts.len() == 2 {
+                println!("{}: {} {} {}", 
+                    format!("{:3}", i + 1).bright_black(),
+                    parts[0].white(),
+                    "=".bright_blue(),
+                    parts[1].green().bold()
+                );
+            } else {
+                println!("{}: {}", format!("{:3}", i + 1).bright_black(), entry.white());
+            }
         }
     }
 }
