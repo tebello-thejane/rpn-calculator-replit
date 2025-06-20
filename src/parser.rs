@@ -12,6 +12,18 @@ pub enum Operator {
     Subtract,
     Multiply,
     Divide,
+    Power,
+    Modulo,
+    Sqrt,
+    Sin,
+    Cos,
+    Tan,
+    Log,
+    Ln,
+    Abs,
+    Floor,
+    Ceil,
+    Round,
 }
 
 impl Operator {
@@ -21,6 +33,18 @@ impl Operator {
             "-" => Ok(Operator::Subtract),
             "*" => Ok(Operator::Multiply),
             "/" => Ok(Operator::Divide),
+            "^" | "pow" => Ok(Operator::Power),
+            "%" | "mod" => Ok(Operator::Modulo),
+            "sqrt" => Ok(Operator::Sqrt),
+            "sin" => Ok(Operator::Sin),
+            "cos" => Ok(Operator::Cos),
+            "tan" => Ok(Operator::Tan),
+            "log" => Ok(Operator::Log),
+            "ln" => Ok(Operator::Ln),
+            "abs" => Ok(Operator::Abs),
+            "floor" => Ok(Operator::Floor),
+            "ceil" => Ok(Operator::Ceil),
+            "round" => Ok(Operator::Round),
             _ => Err(RpnError::InvalidToken(s.to_string())),
         }
     }
@@ -37,7 +61,58 @@ impl Operator {
                     Ok(left / right)
                 }
             }
+            Operator::Power => Ok(left.powf(right)),
+            Operator::Modulo => {
+                if right == 0.0 {
+                    Err(RpnError::DivisionByZero)
+                } else {
+                    Ok(left % right)
+                }
+            }
+            _ => Err(RpnError::InvalidToken("Binary operation expected".to_string())),
         }
+    }
+
+    pub fn apply_unary(&self, operand: f64) -> Result<f64, RpnError> {
+        match self {
+            Operator::Sqrt => {
+                if operand < 0.0 {
+                    Err(RpnError::ParseError("Square root of negative number".to_string()))
+                } else {
+                    Ok(operand.sqrt())
+                }
+            }
+            Operator::Sin => Ok(operand.sin()),
+            Operator::Cos => Ok(operand.cos()),
+            Operator::Tan => Ok(operand.tan()),
+            Operator::Log => {
+                if operand <= 0.0 {
+                    Err(RpnError::ParseError("Logarithm of non-positive number".to_string()))
+                } else {
+                    Ok(operand.log10())
+                }
+            }
+            Operator::Ln => {
+                if operand <= 0.0 {
+                    Err(RpnError::ParseError("Natural logarithm of non-positive number".to_string()))
+                } else {
+                    Ok(operand.ln())
+                }
+            }
+            Operator::Abs => Ok(operand.abs()),
+            Operator::Floor => Ok(operand.floor()),
+            Operator::Ceil => Ok(operand.ceil()),
+            Operator::Round => Ok(operand.round()),
+            _ => Err(RpnError::InvalidToken("Unary operation expected".to_string())),
+        }
+    }
+
+    pub fn is_unary(&self) -> bool {
+        matches!(self, 
+            Operator::Sqrt | Operator::Sin | Operator::Cos | Operator::Tan | 
+            Operator::Log | Operator::Ln | Operator::Abs | Operator::Floor | 
+            Operator::Ceil | Operator::Round
+        )
     }
 
     pub fn symbol(&self) -> &'static str {
@@ -46,6 +121,18 @@ impl Operator {
             Operator::Subtract => "-",
             Operator::Multiply => "*",
             Operator::Divide => "/",
+            Operator::Power => "^",
+            Operator::Modulo => "%",
+            Operator::Sqrt => "sqrt",
+            Operator::Sin => "sin",
+            Operator::Cos => "cos",
+            Operator::Tan => "tan",
+            Operator::Log => "log",
+            Operator::Ln => "ln",
+            Operator::Abs => "abs",
+            Operator::Floor => "floor",
+            Operator::Ceil => "ceil",
+            Operator::Round => "round",
         }
     }
 }
@@ -82,6 +169,21 @@ mod tests {
         assert_eq!(tokens[0], Token::Number(3.0));
         assert_eq!(tokens[1], Token::Number(4.0));
         assert_eq!(tokens[2], Token::Operator(Operator::Add));
+    }
+
+    #[test]
+    fn test_parse_advanced_operators() {
+        let tokens = parse_expression("25 sqrt").unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0], Token::Number(25.0));
+        assert_eq!(tokens[1], Token::Operator(Operator::Sqrt));
+    }
+
+    #[test]
+    fn test_parse_power_operator() {
+        let tokens = parse_expression("2 3 pow").unwrap();
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[2], Token::Operator(Operator::Power));
     }
 
     #[test]
