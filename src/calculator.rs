@@ -74,8 +74,8 @@ impl Calculator {
     pub fn evaluate(&mut self, expression: &str) -> Result<f64, RpnError> {
         let tokens = parse_expression(expression)?;
         
-        // Clear the stack for each new expression
-        self.stack.clear();
+        // Don't clear stack in interactive mode - let it accumulate
+        let initial_stack_size = self.stack.len();
         
         for token in tokens {
             match token {
@@ -106,13 +106,21 @@ impl Calculator {
             }
         }
 
-        if self.stack.len() != 1 {
+        // For batch mode or when stack was initially empty, expect exactly one result
+        // For interactive mode with existing stack, just return the top value
+        if initial_stack_size == 0 && self.stack.len() != 1 {
             return Err(RpnError::ParseError(
                 "Invalid expression: too many operands or insufficient operators".to_string()
             ));
         }
+        
+        if self.stack.is_empty() {
+            return Err(RpnError::ParseError(
+                "Expression resulted in empty stack".to_string()
+            ));
+        }
 
-        let result = self.stack[0];
+        let result = self.stack[self.stack.len() - 1]; // Get top of stack
         
         // Add to history
         self.history.push(format!("{} = {}", expression, result));
@@ -134,6 +142,32 @@ impl Calculator {
 
     pub fn get_stack(&self) -> &[f64] {
         &self.stack
+    }
+
+    pub fn display_stack(&self) -> String {
+        if self.stack.is_empty() {
+            "Stack: []".to_string()
+        } else {
+            let stack_items: Vec<String> = self.stack.iter()
+                .map(|&val| {
+                    if val.fract() == 0.0 && val.abs() < 1e15 {
+                        format!("{}", val as i64)
+                    } else {
+                        let formatted = format!("{}", val);
+                        if formatted.contains('.') && formatted.ends_with('0') {
+                            formatted.trim_end_matches('0').trim_end_matches('.').to_string()
+                        } else {
+                            formatted
+                        }
+                    }
+                })
+                .collect();
+            format!("Stack: [{}]", stack_items.join(", "))
+        }
+    }
+
+    pub fn get_stack_depth(&self) -> usize {
+        self.stack.len()
     }
 
     /// Evaluate expression and return formatted result
