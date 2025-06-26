@@ -69,7 +69,7 @@ impl Operator {
                     Ok(left % right)
                 }
             }
-            _ => Err(RpnError::InvalidToken("Binary operation expected".to_string())),
+            _ => Err(RpnError::InvalidToken(format!("'{}' is not a binary operator", self.symbol()))),
         }
     }
 
@@ -82,12 +82,37 @@ impl Operator {
                     Ok(operand.sqrt())
                 }
             }
-            Operator::Sin => Ok(operand.sin()),
-            Operator::Cos => Ok(operand.cos()),
-            Operator::Tan => Ok(operand.tan()),
+            Operator::Sin => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Sine of infinite or NaN value".to_string()))
+                } else {
+                    Ok(operand.sin())
+                }
+            }
+            Operator::Cos => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Cosine of infinite or NaN value".to_string()))
+                } else {
+                    Ok(operand.cos())
+                }
+            }
+            Operator::Tan => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Tangent of infinite or NaN value".to_string()))
+                } else {
+                    let result = operand.tan();
+                    if result.is_infinite() {
+                        Err(RpnError::ParseError("Tangent result is infinite (near π/2 + nπ)".to_string()))
+                    } else {
+                        Ok(result)
+                    }
+                }
+            }
             Operator::Log => {
                 if operand <= 0.0 {
                     Err(RpnError::ParseError("Logarithm of non-positive number".to_string()))
+                } else if operand.is_infinite() {
+                    Ok(f64::INFINITY)
                 } else {
                     Ok(operand.log10())
                 }
@@ -95,15 +120,41 @@ impl Operator {
             Operator::Ln => {
                 if operand <= 0.0 {
                     Err(RpnError::ParseError("Natural logarithm of non-positive number".to_string()))
+                } else if operand.is_infinite() {
+                    Ok(f64::INFINITY)
                 } else {
                     Ok(operand.ln())
                 }
             }
-            Operator::Abs => Ok(operand.abs()),
-            Operator::Floor => Ok(operand.floor()),
-            Operator::Ceil => Ok(operand.ceil()),
-            Operator::Round => Ok(operand.round()),
-            _ => Err(RpnError::InvalidToken("Unary operation expected".to_string())),
+            Operator::Abs => {
+                if operand.is_nan() {
+                    Err(RpnError::ParseError("Absolute value of NaN".to_string()))
+                } else {
+                    Ok(operand.abs())
+                }
+            }
+            Operator::Floor => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Floor of infinite or NaN value".to_string()))
+                } else {
+                    Ok(operand.floor())
+                }
+            }
+            Operator::Ceil => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Ceiling of infinite or NaN value".to_string()))
+                } else {
+                    Ok(operand.ceil())
+                }
+            }
+            Operator::Round => {
+                if operand.is_infinite() || operand.is_nan() {
+                    Err(RpnError::ParseError("Round of infinite or NaN value".to_string()))
+                } else {
+                    Ok(operand.round())
+                }
+            }
+            _ => Err(RpnError::InvalidToken(format!("'{}' is not a unary operator", self.symbol()))),
         }
     }
 

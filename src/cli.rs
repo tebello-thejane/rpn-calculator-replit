@@ -21,14 +21,16 @@ pub struct Args {
 
 pub fn run_batch_mode(expression: &str) -> Result<(), RpnError> {
     let mut calculator = Calculator::new(); // Use fresh calculator for batch mode
-    let result = calculator.evaluate_and_format(expression);
-    
-    if result.starts_with("Error:") {
-        println!("{}", result.red());
-    } else {
-        println!("{}", result.green().bold());
+    match calculator.evaluate_and_format(expression) {
+        Ok(result) => {
+            println!("{}", result.green().bold());
+            Ok(())
+        }
+        Err(e) => {
+            println!("{}", format!("Error: {}", e).red());
+            Err(e)
+        }
     }
-    Ok(())
 }
 
 pub fn run_interactive_mode() -> Result<(), RpnError> {
@@ -83,16 +85,14 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                         show_stack_and_context(&calculator);
                     }
                     _ => {
-                        let result = calculator.evaluate_and_format(line);
-                        if result.starts_with("Error:") {
-                            println!("{}", result.red());
-                        } else {
-                            println!("{}", format!("= {}", result).green().bold());
-                        }
-                        
-                        // Show stack after each calculation
-                        if !result.starts_with("Error:") {
-                            show_stack_status(&calculator);
+                        match calculator.evaluate_and_format(line) {
+                            Ok(result) => {
+                                println!("{}", format!("= {}", result).green().bold());
+                                show_stack_status(&calculator);
+                            }
+                            Err(e) => {
+                                println!("{}", format!("Error: {}", e).red());
+                            }
                         }
                     }
                 }

@@ -170,25 +170,24 @@ impl Calculator {
         self.stack.len()
     }
 
-    /// Evaluate expression and return formatted result
-    pub fn evaluate_and_format(&mut self, expression: &str) -> String {
-        match self.evaluate(expression) {
-            Ok(result) => {
-                if result.fract() == 0.0 && result.abs() < 1e15 {
-                    // Display as integer if it's a whole number
-                    format!("{}", result as i64)
-                } else {
-                    // Display as float, removing trailing zeros
-                    let formatted = format!("{}", result);
-                    if formatted.contains('.') && formatted.ends_with('0') {
-                        formatted.trim_end_matches('0').trim_end_matches('.').to_string()
-                    } else {
-                        formatted
-                    }
-                }
+    /// Evaluate expression and return result
+    pub fn evaluate_and_format(&mut self, expression: &str) -> Result<String, RpnError> {
+        let result = self.evaluate(expression)?;
+        
+        let formatted = if result.fract() == 0.0 && result.abs() < 1e15 {
+            // Display as integer if it's a whole number
+            format!("{}", result as i64)
+        } else {
+            // Display as float, removing trailing zeros
+            let formatted = format!("{}", result);
+            if formatted.contains('.') && formatted.ends_with('0') {
+                formatted.trim_end_matches('0').trim_end_matches('.').to_string()
+            } else {
+                formatted
             }
-            Err(e) => format!("Error: {}", e),
-        }
+        };
+        
+        Ok(formatted)
     }
 }
 
