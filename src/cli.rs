@@ -20,7 +20,7 @@ pub struct Args {
 }
 
 pub fn run_batch_mode(expression: &str) -> Result<(), RpnError> {
-    let mut calculator = Calculator::new_with_history();
+    let mut calculator = Calculator::new(); // Use fresh calculator for batch mode
     let result = calculator.evaluate_and_format(expression);
     
     if result.starts_with("Error:") {
@@ -47,6 +47,7 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
     println!("\n{}", "Commands:".bright_blue().bold());
     println!("  {}    - Show this help message", "help".green());
     println!("  {}  - Show calculation history", "history".green());
+    println!("  {}   - Show current stack and context", "stack".green());
     println!("  {}   - Clear calculation history", "clear".green());
     println!("  {}    - Exit the calculator", "quit".green());
     println!();
@@ -78,12 +79,20 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                         calculator.clear_history();
                         println!("{}", "🗑️  History cleared and saved.".yellow());
                     }
+                    "stack" => {
+                        show_stack_and_context(&calculator);
+                    }
                     _ => {
                         let result = calculator.evaluate_and_format(line);
                         if result.starts_with("Error:") {
                             println!("{}", result.red());
                         } else {
                             println!("{}", format!("= {}", result).green().bold());
+                        }
+                        
+                        // Show stack after each calculation
+                        if !result.starts_with("Error:") {
+                            show_stack_status(&calculator);
                         }
                     }
                 }
@@ -143,6 +152,7 @@ fn show_help() {
     println!("{}", "Commands:".bright_blue().bold());
     println!("  {}    - Show this help message", "help".green());
     println!("  {} - Show calculation history", "history".green());
+    println!("  {}   - Show current stack and context", "stack".green());
     println!("  {}   - Clear calculation history", "clear".green());
     println!("  {}    - Exit the calculator", "quit".green());
     println!();
@@ -168,5 +178,43 @@ fn show_history(calculator: &Calculator) {
                 println!("{}: {}", format!("{:3}", i + 1).bright_black(), entry.white());
             }
         }
+    }
+}
+
+fn show_stack_status(calculator: &Calculator) {
+    let stack_display = calculator.display_stack();
+    if calculator.get_stack_depth() > 0 {
+        println!("{}", stack_display.bright_black());
+    }
+}
+
+fn show_stack_and_context(calculator: &Calculator) {
+    println!("{}", "📚 Calculator Context:".cyan().bold());
+    println!("{}", "====================".cyan());
+    
+    // Stack display
+    let stack_display = calculator.display_stack();
+    if calculator.get_stack_depth() == 0 {
+        println!("{}: {}", "Stack".blue(), "Empty".yellow());
+    } else {
+        println!("{}: {}", "Stack".blue(), stack_display.split(": ").nth(1).unwrap_or("").white());
+        println!("{}: {}", "Depth".blue(), format!("{} items", calculator.get_stack_depth()).white());
+    }
+    
+    // History context
+    let history_count = calculator.get_history().len();
+    println!("{}: {}", "History".blue(), format!("{} calculations", history_count).white());
+    
+    // Mode indicators
+    println!("{}: {}", "Mode".blue(), "Radians".white());
+    println!("{}: {}", "Base".blue(), "Decimal".white());
+    
+    // Available operations hint
+    if calculator.get_stack_depth() >= 2 {
+        println!("{}: {}", "Ready for".green(), "Binary operations (+, -, *, /, ^, %)".white());
+    } else if calculator.get_stack_depth() == 1 {
+        println!("{}: {}", "Ready for".green(), "Unary operations (sqrt, sin, cos, abs, etc.)".white());
+    } else {
+        println!("{}: {}", "Waiting for".yellow(), "Numbers to be entered".white());
     }
 }
