@@ -15,6 +15,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cargo clippy` - Run linter for code quality checks
 - `cargo fmt` - Format code according to Rust standards
 
+### Feature Flags
+- `cargo build --no-default-features` - Build without visual features
+- `cargo build --features stack-viz` - Enable only stack visualization
+- `cargo build --features latex-rendering` - Enable only mathematical rendering
+
 ## Architecture
 
 This is a Rust-based RPN (Reverse Polish Notation) calculator with modular architecture:
@@ -37,11 +42,17 @@ This is a Rust-based RPN (Reverse Polish Notation) calculator with modular archi
 
 - **Error Handling (`error.rs`)** - Comprehensive error types with user-friendly messages
 
+- **Visual Features (`features/`)** - Modular visual enhancements with optional compilation:
+  - `stack_visualization/` - ASCII art stack display with Unicode box characters
+  - `latex_rendering/` - Advanced terminal mathematical rendering with proper fractions, superscripts, and equation boxes
+
 ### Key Architectural Patterns
 - **Stack Persistence**: Interactive mode maintains stack between calculations, enabling chained operations
 - **History Management**: Automatic serialization/deserialization of calculation history using serde
 - **Mode Switching**: Batch vs interactive modes with different calculator initialization strategies
 - **Operator Polymorphism**: Unified operator handling for both unary and binary operations
+- **Feature Modularity**: Conditional compilation of visual features via Cargo feature flags
+- **Enhanced UX**: Visual stack representation and advanced mathematical notation rendering
 
 ### Data Flow
 1. Expression parsing: String → Vec<Token>

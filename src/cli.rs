@@ -3,6 +3,7 @@ use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use crate::calculator::Calculator;
 use crate::error::RpnError;
+use crate::features::FeatureManager;
 use colored::*;
 
 #[derive(Parser)]
@@ -35,6 +36,7 @@ pub fn run_batch_mode(expression: &str) -> Result<(), RpnError> {
 
 pub fn run_interactive_mode() -> Result<(), RpnError> {
     let mut calculator = Calculator::new_with_history();
+    let feature_manager = FeatureManager::new();
     let mut rl = DefaultEditor::new().map_err(|e| RpnError::IoError(e.to_string()))?;
     
     println!("{}", "🧮 RPN Calculator - Interactive Mode".cyan().bold());
@@ -51,6 +53,7 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
     println!("  {}  - Show calculation history", "history".green());
     println!("  {}   - Show current stack and context", "stack".green());
     println!("  {}   - Clear calculation history", "clear".green());
+    println!("  {}   - Show LaTeX representation", "latex".green());
     println!("  {}    - Exit the calculator", "quit".green());
     println!();
 
@@ -82,13 +85,37 @@ pub fn run_interactive_mode() -> Result<(), RpnError> {
                         println!("{}", "🗑️  History cleared and saved.".yellow());
                     }
                     "stack" => {
-                        show_stack_and_context(&calculator);
+                        show_stack_and_context(&calculator, &feature_manager);
+                    }
+                    "latex" => {
+                        if let Some(last_expr) = calculator.get_history().last() {
+                            let expr_part = last_expr.split(" = ").next().unwrap_or("");
+                            let latex = feature_manager.render_latex(expr_part);
+                            println!("{}", latex);
+                        } else {
+                            println!("{}", "No expressions to convert to LaTeX".yellow());
+                        }
                     }
                     _ => {
                         match calculator.evaluate_and_format(line) {
                             Ok(result) => {
-                                println!("{}", format!("= {}", result).green().bold());
-                                show_stack_status(&calculator);
+                                // Parse the result back to f64 for rendering equation box
+                                if let Ok(result_num) = result.parse::<f64>() {
+                                    #[cfg(feature = "latex-rendering")]
+                                    {
+                                        let equation_box = feature_manager.latex_renderer.render_equation_box(line, result_num);
+                                        println!("{}", equation_box);
+                                    }
+                                    #[cfg(not(feature = "latex-rendering"))]
+                                    {
+                                        println!("{}", format!("= {}", result).green().bold());
+                                    }
+                                } else {
+                                    println!("{}", format!("= {}", result).green().bold());
+                                }
+                                
+                                // Show enhanced stack status
+                                show_stack_status(&calculator, &feature_manager);
                             }
                             Err(e) => {
                                 println!("{}", format!("Error: {}", e).red());
@@ -154,6 +181,7 @@ fn show_help() {
     println!("  {} - Show calculation history", "history".green());
     println!("  {}   - Show current stack and context", "stack".green());
     println!("  {}   - Clear calculation history", "clear".green());
+    println!("  {}   - Show LaTeX representation", "latex".green());
     println!("  {}    - Exit the calculator", "quit".green());
     println!();
 }
@@ -181,25 +209,20 @@ fn show_history(calculator: &Calculator) {
     }
 }
 
-fn show_stack_status(calculator: &Calculator) {
-    let stack_display = calculator.display_stack();
+fn show_stack_status(calculator: &Calculator, feature_manager: &FeatureManager) {
+    let stack_display = feature_manager.display_stack(calculator);
     if calculator.get_stack_depth() > 0 {
-        println!("{}", stack_display.bright_black());
+        println!("{}", stack_display);
     }
 }
 
-fn show_stack_and_context(calculator: &Calculator) {
+fn show_stack_and_context(calculator: &Calculator, feature_manager: &FeatureManager) {
     println!("{}", "📚 Calculator Context:".cyan().bold());
     println!("{}", "====================".cyan());
     
-    // Stack display
-    let stack_display = calculator.display_stack();
-    if calculator.get_stack_depth() == 0 {
-        println!("{}: {}", "Stack".blue(), "Empty".yellow());
-    } else {
-        println!("{}: {}", "Stack".blue(), stack_display.split(": ").nth(1).unwrap_or("").white());
-        println!("{}: {}", "Depth".blue(), format!("{} items", calculator.get_stack_depth()).white());
-    }
+    // Enhanced stack display
+    let stack_display = feature_manager.display_stack(calculator);
+    println!("{}", stack_display);
     
     // History context
     let history_count = calculator.get_history().len();
@@ -209,12 +232,10 @@ fn show_stack_and_context(calculator: &Calculator) {
     println!("{}: {}", "Mode".blue(), "Radians".white());
     println!("{}: {}", "Base".blue(), "Decimal".white());
     
-    // Available operations hint
-    if calculator.get_stack_depth() >= 2 {
-        println!("{}: {}", "Ready for".green(), "Binary operations (+, -, *, /, ^, %)".white());
-    } else if calculator.get_stack_depth() == 1 {
-        println!("{}: {}", "Ready for".green(), "Unary operations (sqrt, sin, cos, abs, etc.)".white());
-    } else {
-        println!("{}: {}", "Waiting for".yellow(), "Numbers to be entered".white());
+    // LaTeX symbols (if enabled)
+    #[cfg(feature = "latex-rendering")]
+    {
+        println!();
+        println!("{}", feature_manager.latex_renderer.get_mathematical_symbols());
     }
 }
